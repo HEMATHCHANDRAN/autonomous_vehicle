@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🚀 Rover Control - ESP32 Autonomous</title>
+    <title>🚀 Rover Control - ESP32 Autonomous v2.0</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -15,7 +15,7 @@
         <header class="header">
             <div class="logo">
                 <i class="fas fa-robot"></i>
-                <h1>ROVER<span>CONTROL</span> <small>v1.0</small></h1>
+                <h1>ROVER<span>CONTROL</span> <small>v2.0</small></h1>
             </div>
             <div class="connection-status" id="connectionStatus">
                 <span class="status-dot"></span>
@@ -48,6 +48,14 @@
                     <div class="status-item">
                         <span class="label"><i class="fas fa-tachometer-alt"></i> Speed</span>
                         <span class="value" id="roverSpeed">--</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label"><i class="fas fa-lightbulb"></i> LED State</span>
+                        <span class="value" id="ledState">--</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label"><i class="fas fa-blink"></i> LED Blinking</span>
+                        <span class="value" id="ledBlinking">--</span>
                     </div>
                     <div class="status-item">
                         <span class="label"><i class="fas fa-server"></i> Broker</span>
@@ -120,6 +128,81 @@
                 </div>
             </div>
 
+            <!-- LED Control Panel -->
+            <div class="led-control-card">
+                <h2><i class="fas fa-lightbulb"></i> ESP32 LED Control</h2>
+                <p class="led-description">Test connection & control the built-in LED on ESP32</p>
+                
+                <div class="led-control-grid">
+                    <!-- LED Status -->
+                    <div class="led-status">
+                        <div class="led-indicator" id="ledIndicator">
+                            <div class="led-glow"></div>
+                            <div class="led-base"></div>
+                        </div>
+                        <div class="led-info">
+                            <h3>LED Status</h3>
+                            <p>State: <span id="ledStatusText">Unknown</span></p>
+                            <p>Blinking: <span id="ledBlinkStatus">No</span></p>
+                        </div>
+                    </div>
+                    
+                    <!-- LED Control Buttons -->
+                    <div class="led-controls">
+                        <h3><i class="fas fa-toggle-on"></i> Basic Control</h3>
+                        <div class="led-button-group">
+                            <button class="led-btn led-btn-on" id="btnLedOn">
+                                <i class="fas fa-power-off"></i> Turn ON
+                            </button>
+                            <button class="led-btn led-btn-off" id="btnLedOff">
+                                <i class="fas fa-times-circle"></i> Turn OFF
+                            </button>
+                            <button class="led-btn led-btn-toggle" id="btnLedToggle">
+                                <i class="fas fa-random"></i> Toggle
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- LED Blink Control -->
+                    <div class="led-blink-control">
+                        <h3><i class="fas fa-blink"></i> Blink Control</h3>
+                        <div class="blink-control-group">
+                            <button class="led-btn led-btn-blink" id="btnLedBlink">
+                                <i class="fas fa-play-circle"></i> Start Blink
+                            </button>
+                            <button class="led-btn led-btn-blink-stop" id="btnLedBlinkStop">
+                                <i class="fas fa-stop-circle"></i> Stop Blink
+                            </button>
+                        </div>
+                        
+                        <div class="blink-speed-control">
+                            <label for="blinkSpeedSlider">
+                                <i class="fas fa-tachometer-alt"></i> Blink Speed: 
+                                <span id="blinkSpeedValue">500</span>ms
+                            </label>
+                            <input type="range" id="blinkSpeedSlider" min="100" max="2000" value="500" class="slider">
+                            <button class="btn-small" id="btnSetBlinkSpeed">
+                                <i class="fas fa-cog"></i> Set Interval
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- LED Test Sequence -->
+                    <div class="led-test-sequence">
+                        <h3><i class="fas fa-vial"></i> Test Sequence</h3>
+                        <p>Run connection test patterns</p>
+                        <div class="test-buttons">
+                            <button class="test-btn" id="btnTestConnection">
+                                <i class="fas fa-plug"></i> Connection Test
+                            </button>
+                            <button class="test-btn" id="btnTestPattern">
+                                <i class="fas fa-wave-square"></i> Pattern Test
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Connection & Settings -->
             <div class="settings-card">
                 <h2><i class="fas fa-cogs"></i> Connection Settings</h2>
@@ -137,6 +220,7 @@
                         <h3><i class="fas fa-info-circle"></i> Connection Details</h3>
                         <p><strong>Broker:</strong> Your HiveMQ Cloud</p>
                         <p><strong>WebSocket:</strong> wss://5fe0dce1f05b48e2a680b77941ce0130.s1.eu.hivemq.cloud:8884/mqtt</p>
+                        <p><strong>LED Topic:</strong> rover/led/ROVER_001</p>
                     </div>
                     
                     <!-- Connection Buttons -->
@@ -146,6 +230,9 @@
                         </button>
                         <button class="btn-disconnect" id="btnDisconnect" disabled>
                             <i class="fas fa-unlink"></i> Disconnect
+                        </button>
+                        <button class="btn-restart" id="btnRestart" disabled>
+                            <i class="fas fa-redo"></i> Restart ESP32
                         </button>
                     </div>
                     
@@ -164,9 +251,9 @@
         <footer class="footer">
             <p>
                 <i class="fas fa-globe"></i> 
-                <strong>Global Rover Control</strong> | 
+                <strong>Global Rover Control v2.0</strong> | 
                 ESP32 + HiveMQ Cloud | 
-                Real-Time Telemetry | 
+                Real-Time Telemetry + LED Control | 
                 <span id="lastUpdate">Last update: --</span>
             </p>
             <p class="connection-info" id="mqttInfo">
