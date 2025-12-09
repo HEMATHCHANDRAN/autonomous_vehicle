@@ -1,79 +1,592 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Rover Test</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 Rover Control Panel</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 900px;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .header h1 .emoji {
+            font-size: 3rem;
+        }
+        
+        .connection-status {
+            padding: 15px;
+            margin: 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .connected {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        
+        .disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .control-panel, .status-panel {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .control-panel h2, .status-panel h2 {
+            color: #495057;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+        }
+        
+        .btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn:active {
+            transform: translateY(-1px);
+        }
+        
+        .btn-connect {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-disconnect {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-led-on {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .btn-led-off {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-status {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .logs {
+            background: #343a40;
+            color: white;
+            padding: 20px;
+            margin: 20px;
+            border-radius: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .log-entry {
+            padding: 8px;
+            border-bottom: 1px solid #495057;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .log-time {
+            color: #6c757d;
+            min-width: 100px;
+        }
+        
+        .log-message {
+            color: #e9ecef;
+        }
+        
+        .status-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .status-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .status-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+        
+        .status-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .message-container {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+        }
+        
+        .message-entry {
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .message-topic {
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .message-content {
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+            border-top: 1px solid #dee2e6;
+        }
+        
+        .success {
+            color: #28a745;
+        }
+        
+        .error {
+            color: #dc3545;
+        }
+        
+        .warning {
+            color: #ffc107;
+        }
+        
+        .info {
+            color: #17a2b8;
+        }
+    </style>
 </head>
 <body>
-    <h1>Rover Connection Test</h1>
-    
-    <div>
-        <button onclick="testMQTT()">Test MQTT Library</button>
-        <button onclick="connect()">Connect to HiveMQ</button>
-        <button onclick="sendLEDOn()">Send LED ON</button>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <span class="emoji">🤖</span>
+                Rover Control Panel
+                <span class="emoji">🎮</span>
+            </h1>
+            <p>Real-time control and monitoring of your ESP32 Rover</p>
+        </div>
+        
+        <div id="connectionStatus" class="connection-status disconnected">
+            🔴 DISCONNECTED from HiveMQ Cloud
+        </div>
+        
+        <div class="dashboard">
+            <div class="control-panel">
+                <h2>🚀 Rover Controls</h2>
+                <div class="button-group">
+                    <button class="btn btn-connect" onclick="connectMQTT()">
+                        <span class="emoji">🔗</span> Connect
+                    </button>
+                    <button class="btn btn-disconnect" onclick="disconnectMQTT()">
+                        <span class="emoji">🔌</span> Disconnect
+                    </button>
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-led-on" onclick="sendCommand('LED_ON')">
+                        <span class="emoji">💡</span> LED ON
+                    </button>
+                    <button class="btn btn-led-off" onclick="sendCommand('LED_OFF')">
+                        <span class="emoji">🔅</span> LED OFF
+                    </button>
+                    <button class="btn btn-status" onclick="sendCommand('GET_STATUS')">
+                        <span class="emoji">📊</span> Get Status
+                    </button>
+                </div>
+                
+                <h3>🎯 Connection Details</h3>
+                <div class="status-info">
+                    <div class="status-item">
+                        <div class="status-label">Broker</div>
+                        <div class="status-value">HiveMQ Cloud</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Client ID</div>
+                        <div id="clientId" class="status-value">-</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Username</div>
+                        <div class="status-value">rover_credentials</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="status-panel">
+                <h2>📈 Real-time Status</h2>
+                <div class="status-info">
+                    <div class="status-item">
+                        <div class="status-label">Connection</div>
+                        <div id="statusConn" class="status-value">❌ Disconnected</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Messages Sent</div>
+                        <div id="sentCount" class="status-value">0</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Messages Received</div>
+                        <div id="recvCount" class="status-value">0</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">Last Update</div>
+                        <div id="lastUpdate" class="status-value">Never</div>
+                    </div>
+                </div>
+                
+                <h3>📨 Incoming Messages</h3>
+                <div id="messageContainer" class="message-container">
+                    <!-- Messages will appear here -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="logs">
+            <h3>📝 Connection Log</h3>
+            <div id="logContainer">
+                <div class="log-entry">
+                    <div class="log-time">System</div>
+                    <div class="log-message">Control panel loaded. Click Connect to start.</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>🤖 ESP32 Rover | HiveMQ Cloud | MQTT Protocol</p>
+            <p>Connection: <span id="brokerInfo">wss://5fe0dce1f05b48e2a680b77941ce0130.s1.eu.hivemq.cloud:8884/mqtt</span></p>
+        </div>
     </div>
-    
-    <div id="output"></div>
-    
+
     <script>
-        // Test if MQTT library loads
-        function testMQTT() {
-            if (typeof mqtt === 'undefined') {
-                // Load MQTT library dynamically
-                const script = document.createElement('script');
-                script.src = 'https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js';
-                script.onload = function() {
-                    log('✅ MQTT library loaded successfully!');
-                };
-                script.onerror = function() {
-                    log('❌ Failed to load MQTT library');
-                };
-                document.head.appendChild(script);
-            } else {
-                log('✅ MQTT library already loaded');
-            }
-        }
+        // ========== CONFIGURATION ==========
+        const host = "wss://5fe0dce1f05b48e2a680b77941ce0130.s1.eu.hivemq.cloud:8884/mqtt";
+        const username = "rover_credentials";
+        const password = "Test@2025";
+        const command_topic = "rover/commands/ROVER_001";
+        const status_topic = "rover/status/ROVER_001";
+        const telemetry_topic = "rover/telemetry/ROVER_001";
         
+        // Generate random client ID
+        const clientId = "web-client-" + Math.random().toString(16).substr(2, 8);
+        
+        // State variables
         let client = null;
+        let isConnected = false;
+        let messagesSent = 0;
+        let messagesReceived = 0;
         
-        function connect() {
-            if (typeof mqtt === 'undefined') {
-                log('❌ Please load MQTT library first');
+        // ========== MQTT FUNCTIONS ==========
+        function connectMQTT() {
+            if (client && isConnected) {
+                addLog("⚠️ Already connected to MQTT", "warning");
                 return;
             }
             
-            const broker = 'wss://5fe0dce1f05b48e2a680b77941ce0130.s1.eu.hivemq.cloud:8884/mqtt';
+            addLog(`🔗 Connecting to HiveMQ Cloud...`, "info");
+            addLog(`Client ID: ${clientId}`, "info");
             
-            log('Connecting to: ' + broker);
+            // Update UI
+            document.getElementById("clientId").textContent = clientId;
+            document.getElementById("statusConn").innerHTML = "🔄 Connecting...";
+            document.getElementById("statusConn").className = "status-value warning";
             
-            client = mqtt.connect(broker, {
-                clientId: 'web-client-' + Math.random().toString(16).substr(2, 8)
-            });
+            // Create MQTT client
+            client = new Paho.MQTT.Client(host, clientId);
             
-            client.on('connect', function() {
-                log('✅ Connected to HiveMQ!');
-            });
+            // Set callback handlers
+            client.onConnectionLost = onConnectionLost;
+            client.onMessageArrived = onMessageArrived;
             
-            client.on('error', function(err) {
-                log('❌ Connection error: ' + err.message);
-            });
+            // Connect options
+            const options = {
+                timeout: 3,
+                keepAliveInterval: 30,
+                cleanSession: true,
+                useSSL: true,
+                userName: username,
+                password: password,
+                onSuccess: onConnectSuccess,
+                onFailure: onConnectFailure
+            };
+            
+            // Connect the client
+            client.connect(options);
         }
         
-        function sendLEDOn() {
-            if (!client || !client.connected) {
-                log('❌ Not connected. Click Connect first.');
+        function onConnectSuccess() {
+            isConnected = true;
+            messagesSent = 0;
+            messagesReceived = 0;
+            
+            // Update UI
+            document.getElementById("connectionStatus").className = "connection-status connected";
+            document.getElementById("connectionStatus").innerHTML = "🟢 CONNECTED to HiveMQ Cloud";
+            document.getElementById("statusConn").innerHTML = "✅ Connected";
+            document.getElementById("statusConn").className = "status-value success";
+            document.getElementById("sentCount").textContent = messagesSent;
+            document.getElementById("recvCount").textContent = messagesReceived;
+            
+            addLog("✅ Successfully connected to HiveMQ Cloud!", "success");
+            
+            // Subscribe to topics
+            client.subscribe(status_topic, {qos: 0});
+            client.subscribe(telemetry_topic, {qos: 0});
+            
+            addLog(`📡 Subscribed to: ${status_topic}`, "info");
+            addLog(`📡 Subscribed to: ${telemetry_topic}`, "info");
+            
+            // Send welcome message
+            setTimeout(() => {
+                const welcomeMsg = "Control panel connected: " + new Date().toLocaleTimeString();
+                sendMessage(status_topic, welcomeMsg);
+            }, 1000);
+        }
+        
+        function onConnectFailure(error) {
+            isConnected = false;
+            
+            // Update UI
+            document.getElementById("connectionStatus").className = "connection-status disconnected";
+            document.getElementById("connectionStatus").innerHTML = "🔴 CONNECTION FAILED";
+            document.getElementById("statusConn").innerHTML = "❌ Failed";
+            document.getElementById("statusConn").className = "status-value error";
+            
+            addLog(`❌ Connection failed: ${error.errorMessage}`, "error");
+            addLog("💡 Check your credentials and internet connection", "warning");
+        }
+        
+        function onConnectionLost(response) {
+            isConnected = false;
+            
+            // Update UI
+            document.getElementById("connectionStatus").className = "connection-status disconnected";
+            document.getElementById("connectionStatus").innerHTML = "🔴 DISCONNECTED from HiveMQ Cloud";
+            document.getElementById("statusConn").innerHTML = "❌ Disconnected";
+            document.getElementById("statusConn").className = "status-value error";
+            
+            if (response.errorCode !== 0) {
+                addLog(`⚠️ Connection lost: ${response.errorMessage}`, "warning");
+            } else {
+                addLog("🔌 Disconnected from MQTT broker", "info");
+            }
+        }
+        
+        function onMessageArrived(message) {
+            messagesReceived++;
+            document.getElementById("recvCount").textContent = messagesReceived;
+            document.getElementById("lastUpdate").textContent = new Date().toLocaleTimeString();
+            
+            const topic = message.destinationName;
+            const payload = message.payloadString;
+            
+            // Display message
+            addMessage(topic, payload);
+            
+            // Log specific topics
+            if (topic === telemetry_topic) {
+                try {
+                    const telemetry = JSON.parse(payload);
+                    addLog(`📊 Telemetry: ${telemetry.device}, RSSI: ${telemetry.rssi}dBm`, "info");
+                } catch (e) {
+                    addLog(`📨 Telemetry: ${payload}`, "info");
+                }
+            } else if (topic === status_topic) {
+                addLog(`📨 Rover: ${payload}`, "success");
+            }
+        }
+        
+        function sendCommand(command) {
+            if (!isConnected || !client) {
+                addLog("⚠️ Not connected to MQTT. Click Connect first.", "warning");
                 return;
             }
             
-            client.publish('rover/commands/ROVER_001', 'led_on');
-            log('✅ Sent: led_on');
+            sendMessage(command_topic, command);
+            messagesSent++;
+            document.getElementById("sentCount").textContent = messagesSent;
+            
+            addLog(`📤 Command sent: ${command}`, "info");
         }
         
-        function log(msg) {
-            const output = document.getElementById('output');
-            const p = document.createElement('p');
-            p.textContent = new Date().toLocaleTimeString() + ': ' + msg;
-            output.appendChild(p);
+        function sendMessage(topic, message) {
+            if (!isConnected || !client) return;
+            
+            const mqttMessage = new Paho.MQTT.Message(message);
+            mqttMessage.destinationName = topic;
+            mqttMessage.qos = 0;
+            client.send(mqttMessage);
         }
+        
+        function disconnectMQTT() {
+            if (client && isConnected) {
+                client.disconnect();
+                addLog("🔌 Disconnecting from MQTT...", "info");
+            } else {
+                addLog("ℹ️ Not connected to MQTT", "info");
+            }
+        }
+        
+        // ========== HELPER FUNCTIONS ==========
+        function addLog(message, type = "info") {
+            const logContainer = document.getElementById("logContainer");
+            const logEntry = document.createElement("div");
+            logEntry.className = "log-entry";
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const typeIcon = {
+                "success": "✅",
+                "error": "❌",
+                "warning": "⚠️",
+                "info": "ℹ️"
+            }[type] || "📝";
+            
+            logEntry.innerHTML = `
+                <div class="log-time">${timestamp}</div>
+                <div class="log-message">${typeIcon} ${message}</div>
+            `;
+            
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        function addMessage(topic, content) {
+            const messageContainer = document.getElementById("messageContainer");
+            const messageEntry = document.createElement("div");
+            messageEntry.className = "message-entry";
+            
+            messageEntry.innerHTML = `
+                <div class="message-topic">${topic}</div>
+                <div class="message-content">${content}</div>
+            `;
+            
+            messageContainer.appendChild(messageEntry);
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+            
+            // Keep only last 10 messages
+            while (messageContainer.children.length > 10) {
+                messageContainer.removeChild(messageContainer.firstChild);
+            }
+        }
+        
+        // ========== INITIALIZATION ==========
+        document.addEventListener("DOMContentLoaded", function() {
+            addLog("🤖 Rover Control Panel initialized", "success");
+            addLog(`📡 Broker: ${host}`, "info");
+            addLog(`👤 Username: ${username}`, "info");
+            addLog("Ready to connect...", "info");
+        });
+        
+        // Auto-connect after 2 seconds
+        setTimeout(() => {
+            addLog("🔗 Auto-connecting to MQTT...", "info");
+            connectMQTT();
+        }, 2000);
     </script>
 </body>
 </html>
