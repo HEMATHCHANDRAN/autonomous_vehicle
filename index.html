@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rover Test</title>
+</head>
+<body>
+    <h1>Rover Connection Test</h1>
+    
+    <div>
+        <button onclick="testMQTT()">Test MQTT Library</button>
+        <button onclick="connect()">Connect to HiveMQ</button>
+        <button onclick="sendLEDOn()">Send LED ON</button>
+    </div>
+    
+    <div id="output"></div>
+    
+    <script>
+        // Test if MQTT library loads
+        function testMQTT() {
+            if (typeof mqtt === 'undefined') {
+                // Load MQTT library dynamically
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js';
+                script.onload = function() {
+                    log('✅ MQTT library loaded successfully!');
+                };
+                script.onerror = function() {
+                    log('❌ Failed to load MQTT library');
+                };
+                document.head.appendChild(script);
+            } else {
+                log('✅ MQTT library already loaded');
+            }
+        }
+        
+        let client = null;
+        
+        function connect() {
+            if (typeof mqtt === 'undefined') {
+                log('❌ Please load MQTT library first');
+                return;
+            }
+            
+            const broker = 'wss://5fe0dce1f05b48e2a680b77941ce0130.s1.eu.hivemq.cloud:8884/mqtt';
+            
+            log('Connecting to: ' + broker);
+            
+            client = mqtt.connect(broker, {
+                clientId: 'web-client-' + Math.random().toString(16).substr(2, 8)
+            });
+            
+            client.on('connect', function() {
+                log('✅ Connected to HiveMQ!');
+            });
+            
+            client.on('error', function(err) {
+                log('❌ Connection error: ' + err.message);
+            });
+        }
+        
+        function sendLEDOn() {
+            if (!client || !client.connected) {
+                log('❌ Not connected. Click Connect first.');
+                return;
+            }
+            
+            client.publish('rover/commands/ROVER_001', 'led_on');
+            log('✅ Sent: led_on');
+        }
+        
+        function log(msg) {
+            const output = document.getElementById('output');
+            const p = document.createElement('p');
+            p.textContent = new Date().toLocaleTimeString() + ': ' + msg;
+            output.appendChild(p);
+        }
+    </script>
+</body>
+</html>
