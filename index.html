@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🚀 Rover Control Panel</title>
+    <title>🚀 Rover Control - ESP32 Autonomous</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
 </head>
 <body>
     <div class="container">
@@ -15,86 +15,131 @@
         <header class="header">
             <div class="logo">
                 <i class="fas fa-robot"></i>
-                <h1>ROVER<span>CONTROL</span></h1>
+                <h1>ROVER<span>CONTROL</span> <small>v1.0</small></h1>
             </div>
             <div class="connection-status" id="connectionStatus">
                 <span class="status-dot"></span>
-                <span class="status-text">Disconnected</span>
+                <span class="status-text" id="statusText">Disconnected</span>
             </div>
         </header>
 
         <!-- Main Control Panel -->
         <main class="control-panel">
-            <!-- Rover Status -->
+            <!-- Live Status Dashboard -->
             <div class="status-card">
-                <h2><i class="fas fa-satellite-dish"></i> Rover Status</h2>
+                <h2><i class="fas fa-satellite-dish"></i> Real-Time Telemetry</h2>
                 <div class="status-grid">
                     <div class="status-item">
-                        <span class="label">Connection</span>
+                        <span class="label"><i class="fas fa-wifi"></i> WiFi Strength</span>
                         <span class="value" id="wifiStrength">--</span>
                     </div>
                     <div class="status-item">
-                        <span class="label">IP Address</span>
+                        <span class="label"><i class="fas fa-network-wired"></i> Rover IP</span>
                         <span class="value" id="roverIP">--</span>
                     </div>
                     <div class="status-item">
-                        <span class="label">Uptime</span>
+                        <span class="label"><i class="fas fa-clock"></i> Uptime</span>
                         <span class="value" id="roverUptime">--</span>
                     </div>
                     <div class="status-item">
-                        <span class="label">Movement</span>
+                        <span class="label"><i class="fas fa-running"></i> Movement</span>
                         <span class="value" id="roverMovement">Stopped</span>
                     </div>
+                    <div class="status-item">
+                        <span class="label"><i class="fas fa-tachometer-alt"></i> Speed</span>
+                        <span class="value" id="roverSpeed">--</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label"><i class="fas fa-server"></i> Broker</span>
+                        <span class="value" id="brokerStatus">Disconnected</span>
+                    </div>
+                </div>
+                
+                <!-- Speed Control -->
+                <div class="speed-control">
+                    <label for="speedSlider"><i class="fas fa-sliders-h"></i> Motor Speed: <span id="speedValue">180</span>/255</label>
+                    <input type="range" id="speedSlider" min="50" max="255" value="180" class="slider">
+                    <button id="btnSetSpeed" class="btn-small"><i class="fas fa-bolt"></i> Set Speed</button>
                 </div>
             </div>
 
             <!-- Control Pad -->
             <div class="control-card">
                 <h2><i class="fas fa-gamepad"></i> Manual Control</h2>
+                <p class="control-hint">Click buttons or use arrow keys + Spacebar</p>
+                
                 <div class="control-grid">
+                    <!-- Forward -->
                     <div class="control-row">
-                        <button class="control-btn btn-forward" id="btnForward">
+                        <button class="control-btn btn-forward" id="btnForward" data-command="forward">
                             <i class="fas fa-arrow-up"></i>
                             <span>FORWARD</span>
+                            <div class="key-hint">↑ Arrow Up</div>
                         </button>
                     </div>
                     
+                    <!-- Left, Stop, Right -->
                     <div class="control-row">
-                        <button class="control-btn btn-left" id="btnLeft">
+                        <button class="control-btn btn-left" id="btnLeft" data-command="left">
                             <i class="fas fa-arrow-left"></i>
                             <span>LEFT</span>
+                            <div class="key-hint">← Arrow Left</div>
                         </button>
                         
-                        <button class="control-btn btn-stop" id="btnStop">
+                        <button class="control-btn btn-stop" id="btnStop" data-command="stop">
                             <i class="fas fa-stop"></i>
-                            <span>STOP</span>
+                            <span>EMERGENCY STOP</span>
+                            <div class="key-hint">Spacebar</div>
                         </button>
                         
-                        <button class="control-btn btn-right" id="btnRight">
+                        <button class="control-btn btn-right" id="btnRight" data-command="right">
                             <i class="fas fa-arrow-right"></i>
                             <span>RIGHT</span>
+                            <div class="key-hint">→ Arrow Right</div>
                         </button>
                     </div>
                     
+                    <!-- Backward -->
                     <div class="control-row">
-                        <button class="control-btn btn-backward" id="btnBackward">
+                        <button class="control-btn btn-backward" id="btnBackward" data-command="backward">
                             <i class="fas fa-arrow-down"></i>
                             <span>BACKWARD</span>
+                            <div class="key-hint">↓ Arrow Down</div>
                         </button>
                     </div>
                 </div>
+                
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <button class="btn-action" id="btnAutoStop" data-command="stop">
+                        <i class="fas fa-hand-paper"></i> Quick Stop
+                    </button>
+                    <button class="btn-action" id="btnGetStatus" data-command="status">
+                        <i class="fas fa-sync-alt"></i> Refresh Status
+                    </button>
+                </div>
             </div>
 
-            <!-- Connection Settings -->
+            <!-- Connection & Settings -->
             <div class="settings-card">
-                <h2><i class="fas fa-cogs"></i> Settings</h2>
+                <h2><i class="fas fa-cogs"></i> Connection Settings</h2>
+                
                 <div class="settings-group">
+                    <!-- Rover ID -->
                     <div class="input-group">
                         <label for="roverId"><i class="fas fa-fingerprint"></i> Rover ID</label>
-                        <input type="text" id="roverId" value="ROVER_001" placeholder="Enter unique rover ID">
-                        <small>Make sure this matches your ESP32 code</small>
+                        <input type="text" id="roverId" value="ROVER_001" placeholder="Enter your rover's unique ID">
+                        <small>Must match the ID in ESP32 code</small>
                     </div>
                     
+                    <!-- Connection Info -->
+                    <div class="info-box">
+                        <h3><i class="fas fa-info-circle"></i> Connection Details</h3>
+                        <p><strong>Broker:</strong> Your HiveMQ Cloud</p>
+                        <p><strong>WebSocket:</strong> wss://5fe0dce1f05b48e2a680b77941ce0130.s1.eu.hivemq.cloud:8884/mqtt</p>
+                    </div>
+                    
+                    <!-- Connection Buttons -->
                     <div class="button-group">
                         <button class="btn-connect" id="btnConnect">
                             <i class="fas fa-plug"></i> Connect to Rover
@@ -103,19 +148,36 @@
                             <i class="fas fa-unlink"></i> Disconnect
                         </button>
                     </div>
+                    
+                    <!-- Connection Log -->
+                    <div class="log-box">
+                        <h3><i class="fas fa-history"></i> Connection Log</h3>
+                        <div class="log-content" id="connectionLog">
+                            <div class="log-entry">System initialized. Ready to connect.</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
 
         <!-- Footer -->
         <footer class="footer">
-            <p>🚀 Control your rover from anywhere in the world | MQTT Broker: broker.hivemq.com</p>
-            <p class="connection-info" id="mqttInfo">Not connected</p>
+            <p>
+                <i class="fas fa-globe"></i> 
+                <strong>Global Rover Control</strong> | 
+                ESP32 + HiveMQ Cloud | 
+                Real-Time Telemetry | 
+                <span id="lastUpdate">Last update: --</span>
+            </p>
+            <p class="connection-info" id="mqttInfo">
+                <i class="fas fa-cloud"></i> Broker: 5fe0dce1f05b48e2a680b77941ce0130.s1.eu.hivemq.cloud:8884
+            </p>
         </footer>
     </div>
 
-    <!-- Scripts -->
+    <!-- MQTT Library -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <!-- Main Script -->
     <script src="script.js"></script>
 </body>
 </html>
